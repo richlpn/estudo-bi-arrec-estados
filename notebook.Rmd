@@ -3,16 +3,46 @@ title: "R Notebook"
 output: html_notebook
 ---
 
-This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code.
-
-Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*.
-
 ```{r}
-plot(cars)
+install.packages('dplyr')
+library('dplyr')
 ```
 
-Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+```{r Import}
 
-When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+arrecadacao_estado <- read.table(
+  file = "C:/Users/20221bsi0455/estudo-bi-arrec-estados/dataset/arrecadacao-estado.csv", fileEncoding="latin1", sep=";", dec=',', check.names=F)
 
-The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+arrecadacao_estado
+```
+
+# Tratar colunas com valores nulos.
+
+OBS: Como esse dataset é sobre arrecadação de impostos a falta de um valor significa que não existia esse imposto no período de registro. Portanto a substituição dos valores **NULOS** por **ZERO** faz sentido.
+
+```{r}
+cols_with_missing <- colnames(arrecadacao_estado)[apply
+    (arrecadacao_estado, 2, anyNA)
+]
+
+arrecadacao_estado[cols_with_missing] <- lapply(
+  arrecadacao_estado[cols_with_missing],
+  function(x) replace(x, is.na(x), 0)
+)
+```
+
+# Qual o estado que mais arrecadou em 2023?
+
+```{r}
+df_filtered <- arrecadacao_estado[arrecadacao_estado["Ano"] == 2023]
+
+grouped_by_uf_ano <- df_filtered.groupby("UF", "Ano") %>% 
+  summarise_across(sum, .cols = everything()[-which(names(df_filtered) == "Mês")])
+
+```
+
+```{r}
+df_filtered %>% 
+  group_by(x(Ano, Uf)) %>%
+  summarise(across())
+```
