@@ -1,0 +1,94 @@
+---
+title: "Estudo Arrecadação d"
+output: html_notebook
+---
+
+> ## Perguntas
+
+-   Qual o estado que mais arrecadou em 2023?
+
+-   Qual o percentual de crescimento dos IPIs (Imposto sobre Produtos Industrializado) de 2000 a 2023?
+
+-   Quanto foi arrecadado pelo governo ao decorrer dos anos?
+
+```{r}
+install.packages("dplyr")
+install.packages("ggplot2")
+
+library(dplyr)  #Função "glimpse" do pacote "dplyr" para verificar o tipo dos dados de cada coluna
+library(ggplot2)
+```
+
+```{r}
+?read.csv
+
+arrec <- read.csv(
+  file = "C:/Users/20212bsi0286/Documents/estudo-bi-arrec-estados/dataset/arrecadacao-estado.csv",
+  sep = ';',
+  dec = ',',
+  fileEncoding='latin1',
+  check.names=F
+)
+
+head(arrec)
+```
+
+![]()
+
+-   Questão 2: Qual o percentual de crescimento dos IPIs (Imposto sobre Produtos Industrializado) de 2000 a 2023?
+
+```{r}
+df_selected <- arrec[, c("Ano", "Mês","UF","IMPOSTO SOBRE IMPORTAÇÃO","IMPOSTO SOBRE EXPORTAÇÃO","IPI - FUMO","IPI - BEBIDAS","IPI - AUTOMÓVEIS","IPI - VINCULADO À IMPORTACAO","IPI - OUTROS" )]
+
+
+```
+
+```{r}
+head(df_selected)
+```
+
+```{r}
+cols_to_convert <- c("IMPOSTO SOBRE IMPORTAÇÃO", "IMPOSTO SOBRE EXPORTAÇÃO", "IPI - FUMO", "IPI - BEBIDAS", "IPI - AUTOMÓVEIS", "IPI - VINCULADO À IMPORTACAO", "IPI - OUTROS")
+df_selected[cols_to_convert] <- lapply(df_selected[cols_to_convert], function(x) as.numeric(as.character(x)))
+```
+
+```{r}
+# Calcular o total dos IPIs por ano
+df_ipi_total <- df_selected %>%
+  group_by(Ano) %>%
+  summarise(
+    total_ipi = sum("IPI - FUMO", "IPI - BEBIDAS", "IPI - AUTOMÓVEIS", "IPI - VINCULADO À IMPORTACAO", "IPI - OUTROS", na.rm = TRUE)
+  ) %>%
+  arrange(Ano)
+```
+
+```{r}
+df_ipi_total <- df_ipi_total %>%
+  mutate(
+    pct_crescimento = (total_ipi / lag(total_ipi) - 1) * 100
+  ) %>%
+  filter(!is.na(pct_crescimento)) 
+```
+
+```{r}
+# Criar o gráfico de linhas
+ggplot(df_ipi_total, aes(x = Ano, y = pct_crescimento)) +
+  geom_line(color = "blue") +
+  geom_point(color = "red") +
+  labs(
+    title = "Percentual de Crescimento dos IPIs (2000-2023)",
+    x = "Ano",
+    y = "Percentual de Crescimento (%)"
+  ) +
+  theme_minimal()
+```
+
+```{r}
+#colnames(arrec)
+```
+
+Add a new chunk by clicking the *Insert Ch*![]()*unk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
