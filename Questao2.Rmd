@@ -1,0 +1,142 @@
+---
+title: "Estudo Arrecadação d"
+output: html_notebook
+---
+
+> ## Perguntas
+
+-   Qual o estado que mais arrecadou em 2023?
+
+-   Qual o percentual de crescimento dos IPIs (Imposto sobre Produtos Industrializado) de 2000 a 2023?
+
+-   Quanto foi arrecadado pelo governo ao decorrer dos anos?
+
+```{r}
+install.packages("dplyr")
+install.packages("ggplot2")
+install.packages("tidyverse")
+install.packages("magrittr")
+install.packages("tidyr")
+
+library(dplyr)  #Função "glimpse" do pacote "dplyr" para verificar o tipo dos dados de cada coluna
+library(ggplot2)
+library(tidyverse)
+library(magrittr)
+library(tidyr)
+```
+
+```{r}
+?read.csv
+
+arrec <- read.csv(
+  file = "C:/Users/kailany.souza/Documents/estudo-bi-arrec-estados/dataset/arrecadacao-estado.csv",
+  sep = ';',
+  dec = ',',
+  fileEncoding='latin1',
+  check.names=F
+)
+
+head(arrec)
+```
+```{r}
+arrec
+```
+
+![]()
+
+-   Questão 2: Qual o percentual de crescimento dos IPIs (Imposto sobre Produtos Industrializado) de 2000 a 2023?
+
+```{r}
+df_selected <- arrec[, c("Ano", "Mês","UF","IMPOSTO SOBRE IMPORTAÇÃO","IMPOSTO SOBRE EXPORTAÇÃO","IPI - FUMO","IPI - BEBIDAS","IPI - AUTOMÓVEIS","IPI - VINCULADO À IMPORTACAO","IPI - OUTROS" )]
+
+
+```
+
+```{r}
+df_selected
+```
+
+```{r}
+cols_to_convert <- c("IMPOSTO SOBRE IMPORTAÇÃO", "IMPOSTO SOBRE EXPORTAÇÃO", "IPI - FUMO", "IPI - BEBIDAS", "IPI - AUTOMÓVEIS", "IPI - VINCULADO À IMPORTACAO", "IPI - OUTROS")
+
+df_selected[cols_to_convert] <- lapply(df_selected[cols_to_convert], function(x) as.numeric(as.character(x)))
+#df_selected[cols_to_convert] <- replace_na(df_selected[cols_to_convert], 0)
+```
+##Apenas em SP em 2023
+```{r}
+df_sp_2023 <- df_selected %>%
+ filter(UF == "SP", Ano == 2023)
+```
+
+```{r}
+df_sp_2023
+```
+
+
+```{r}
+# Calcular o total dos IPIs por ano
+df_ipi_total <- df_selected %>%
+  group_by(Ano,Mês) %>%
+  summarise(
+    total_ipi = sum(`IPI - FUMO`, `IPI - BEBIDAS`, `IPI - AUTOMÓVEIS`, `IPI - VINCULADO À IMPORTACAO`, `IPI - OUTROS`, na.rm = TRUE)
+  ) %>%
+  arrange(Ano,Mês)
+  #arrange(match(Mês, month.name))
+```
+
+
+```{r}
+df_ipi_total_sp_2023 <- df_sp_2023 %>%
+  group_by(Ano,Mês) %>%
+  summarise(
+    total_ipi = sum(`IPI - FUMO`, `IPI - BEBIDAS`, `IPI - AUTOMÓVEIS`, `IPI - VINCULADO À IMPORTACAO`, `IPI - OUTROS`, na.rm = TRUE)
+  ) %>%
+  arrange(Ano,Mês)
+  #arrange(match(Mês, month.name))
+```
+
+```{r}
+df_ipi_total <- df_ipi_total %>%
+  mutate(
+    pct_crescimento = (total_ipi / lag(total_ipi) - 1) * 100
+  ) %>%
+  filter(!is.na(pct_crescimento)) 
+
+#em São Paulo em 2023
+df_ipi_total_sp_2023 <- df_ipi_total_sp_2023 %>%
+  mutate(
+    pct_crescimento_sp_2023 = (total_ipi / lag(total_ipi) - 1) * 100
+  ) %>%
+  filter(!is.na(pct_crescimento_sp_2023))
+```
+
+```{r}
+ggplot(df_ipi_total_sp_2023, aes(x = Mês, y = pct_crescimento_sp_2023)) +
+  geom_line(color = "blue") +  # Linha do percentual de crescimento
+  geom_point(color = "red") +  # Pontos para destacar os dados
+  geom_text(aes(label = paste(round(pct_crescimento_sp_2023, 2),"%")), vjust = -0.5, hjust = 0.5, size = 3) +  # Rótulos com percentuais
+  labs(
+    title = "Percentual de Crescimento dos IPIs em 2023 - Estado de São Paulo",
+    x = "Mês",
+    y = "Percentual de Crescimento (%)"
+  ) +
+  theme_minimal()
+```
+
+
+
+
+```{r}
+# Criar o gráfico de linhas
+ggplot(df_ipi_total, aes(x = Ano, y = pct_crescimento)) +
+  geom_line(color = "blue") +
+  geom_point(color = "red") +
+  labs(
+    title = "Percentual de Crescimento dos IPIs (2000-2023)",
+    x = "Ano",
+    y = "Percentual de Crescimento (%)"
+  ) +
+  theme_minimal()
+```
+
+
