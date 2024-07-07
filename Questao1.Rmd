@@ -21,8 +21,7 @@ arrecadacao_estado
 OBS: Como esse dataset é sobre arrecadação de impostos a falta de um valor significa que não existia esse imposto no período de registro. Portanto a substituição dos valores **NULOS** por **ZERO** faz sentido.
 
 ```{r}
-cols_with_missing <- colnames(arrecadacao_estado)[apply
-    (arrecadacao_estado, 2, anyNA)]
+cols_with_missing <- colnames(arrecadacao_estado)[apply(arrecadacao_estado, 2, anyNA)]
 
 arrecadacao_estado[cols_with_missing] <- lapply(
   arrecadacao_estado[cols_with_missing],
@@ -35,22 +34,41 @@ arrecadacao_estado[cols_with_missing] <- lapply(
 ```{r}
 df_filtered <- arrecadacao_estado %>%
   filter(Ano == 2023)
-total <- df_filtered %>%
+total_uf <- df_filtered %>%
   reframe(arrecadacao_cols = rowSums(across(where(is.numeric))), .by=UF) %>%
-  reframe(arrecadacao_total = sum(arrecadacao_cols), .by=UF)%>%
+  reframe(arrecadacao_total = sum(arrecadacao_cols), .by=UF) %>%
   arrange(desc(arrecadacao_total))
-total
+
 ```
 
 # 
 
 ```{r}
-top_5_taxes <- total %>%
+top_5_taxes <- total_uf %>%
   top_n(5, wt = arrecadacao_total)
 
 ggplot(top_5_taxes, aes(x = reorder(UF, -arrecadacao_total), y = arrecadacao_total)) +
   geom_bar(stat = "identity") +
   scale_y_continuous(labels = scales::dollar_format(scale = 1e-9, suffix = "B", prefix = "R$")) +
   labs(title = "Top 5 UF's com maior arrecadação em 2023", x = "UF", y = "Total arrecadado (Bilhões)") +
+  theme_minimal()
+```
+
+# Quanto foi arrecado anualmente?
+
+```{r}
+total <- arrecadacao_estado %>%
+  reframe(arrecadacao_cols = rowSums(across(where(is.numeric))), .by=Ano) %>%
+  reframe(arrecadacao_total = sum(arrecadacao_cols), .by=Ano) %>%
+  arrange(desc(arrecadacao_total))
+
+```
+
+```{r}
+ggplot(total, aes(x = Ano, y = arrecadacao_total)) +
+  geom_line() +
+  geom_point() +
+  scale_y_continuous(labels = scales::dollar_format(scale = 1e-9, prefix = "R$")) +
+  labs(title = "Total arrecado durante os anos", x = "Ano", y = "Total (bilhões)") +
   theme_minimal()
 ```
