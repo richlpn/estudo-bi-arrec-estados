@@ -1,0 +1,56 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library('dplyr')
+library('ggplot2')
+```
+
+```{r Import}
+
+arrecadacao_estado <- read.table(
+  file = "./dataset/arrecadacao-estado.csv", fileEncoding="latin1", sep=";", dec=',', check.names=F, header = T)
+
+arrecadacao_estado
+```
+
+# Tratar colunas com valores nulos.
+
+OBS: Como esse dataset é sobre arrecadação de impostos a falta de um valor significa que não existia esse imposto no período de registro. Portanto a substituição dos valores **NULOS** por **ZERO** faz sentido.
+
+```{r}
+cols_with_missing <- colnames(arrecadacao_estado)[apply
+    (arrecadacao_estado, 2, anyNA)]
+
+arrecadacao_estado[cols_with_missing] <- lapply(
+  arrecadacao_estado[cols_with_missing],
+  function(x) replace(x, is.na(x), 0)
+)
+```
+
+# Qual o estado que mais arrecadou em 2023?
+
+```{r}
+df_filtered <- arrecadacao_estado %>%
+  filter(Ano == 2023)
+total <- df_filtered %>%
+  reframe(arrecadacao_cols = rowSums(across(where(is.numeric))), .by=UF) %>%
+  reframe(arrecadacao_total = sum(arrecadacao_cols), .by=UF)%>%
+  arrange(desc(arrecadacao_total))
+total
+```
+
+# 
+
+```{r}
+top_5_taxes <- total %>%
+  top_n(5, wt = arrecadacao_total)
+
+ggplot(top_5_taxes, aes(x = reorder(UF, -arrecadacao_total), y = arrecadacao_total)) +
+  geom_bar(stat = "identity") +
+  scale_y_continuous(labels = scales::dollar_format(scale = 1e-9, suffix = "B", prefix = "R$")) +
+  labs(title = "Top 5 UF's com maior arrecadação em 2023", x = "UF", y = "Total arrecadado (Bilhões)") +
+  theme_minimal()
+```
