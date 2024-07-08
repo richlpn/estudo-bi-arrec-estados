@@ -1,5 +1,5 @@
 ---
-title: "Estudo Arrecadação d"
+title: "Estudo Arrecadação"
 output: html_notebook
 ---
 
@@ -7,17 +7,11 @@ output: html_notebook
 
 -   Qual o estado que mais arrecadou em 2023?
 
--   Qual o percentual de crescimento dos IPIs (Imposto sobre Produtos Industrializado) de 2000 a 2023?
-
 -   Quanto foi arrecadado pelo governo ao decorrer dos anos?
 
-```{r}
-install.packages("dplyr")
-install.packages("ggplot2")
-install.packages("tidyverse")
-install.packages("magrittr")
-install.packages("tidyr")
+-   Qual o percentual de crescimento dos IPIs (Imposto sobre Produtos Industrializado) de 2000 a 2023?
 
+```{r}
 library(dplyr)  #Função "glimpse" do pacote "dplyr" para verificar o tipo dos dados de cada coluna
 library(ggplot2)
 library(tidyverse)
@@ -28,13 +22,13 @@ library(tidyr)
 ```{r}
 ?read.csv
 
-arrec <- read.csv(
-  file = "C:/Users/kailany.souza/Documents/estudo-bi-arrec-estados/dataset/arrecadacao-estado.csv",
-  sep = ';',
-  dec = ',',
-  fileEncoding='latin1',
-  check.names=F
-)
+arrec <- read.table(
+  file = "./dataset/arrecadacao-estado.csv",
+  fileEncoding="latin1", 
+  sep=";", 
+  dec=',', 
+  check.names=F, 
+  header = T)
 
 head(arrec)
 ```

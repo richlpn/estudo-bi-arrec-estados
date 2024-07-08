@@ -1,0 +1,172 @@
+---
+title: "Estudo arrecadação de impostos por estado"
+output: html_notebook
+---
+## Definição do Problema
+
+O objetivo deste relatório é analisar a arrecadação de impostos pelos estados brasileiros em 2023 e ao longo dos anos. Mais especificamente, responderemos às seguintes perguntas:
+
+- Qual o estado que mais arrecadou em 2023?
+- Quanto foi arrecadado pelo governo ao decorrer dos anos?
+- Qual o percentual de crescimento dos IPIs (Imposto sobre Produtos Industrializado) no estado que mais arrecadou em 2023?
+
+
+
+```{r Imports}
+library('dplyr')
+library('ggplot2')
+library(tidyverse)
+```
+
+```{r Carregar dados}
+
+arrecadacao_estado <- read.table(
+  file = "./dataset/arrecadacao-estado.csv", 
+  fileEncoding="latin1", 
+  sep=";", 
+  dec=',', 
+  check.names=F, 
+  header = T)
+
+arrecadacao_estado
+```
+
+
+
+## Tratar colunas com valores nulos.
+
+OBS: Como esse dataset é sobre arrecadação de impostos a falta de um valor significa que não existia esse imposto no período de registro. Portanto a substituição dos valores **NULOS** por **ZERO** faz sentido.
+
+```{r Tratamento}
+cols_with_missing <- colnames(arrecadacao_estado)[apply(arrecadacao_estado, 2, anyNA)]
+
+arrecadacao_estado[cols_with_missing] <- lapply(
+  arrecadacao_estado[cols_with_missing],
+  function(x) replace(x, is.na(x), 0)
+)
+```
+
+## Qual o estado que mais arrecadou em 2023?
+
+```{r}
+df_filtered <- arrecadacao_estado %>%
+  filter(Ano == 2023)
+total_uf <- df_filtered %>%
+  reframe(arrecadacao_cols = rowSums(across(where(is.numeric))), .by=UF) %>%
+  reframe(arrecadacao_total = sum(arrecadacao_cols), .by=UF) %>%
+  arrange(desc(arrecadacao_total))
+
+```
+```{r}
+print(total_uf)
+```
+
+
+# 
+
+```{r}
+top_5_taxes <- total_uf %>%
+  top_n(5, wt = arrecadacao_total)
+
+ggplot(top_5_taxes, aes(x = reorder(UF, -arrecadacao_total), y = arrecadacao_total)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = scales::dollar(arrecadacao_total, scale = 1e-9, suffix = "B", prefix = "R$"), 
+  y = arrecadacao_total + 0.05 * max(arrecadacao_total)), 
+  size = 3, vjust = -0.1) +  # Ajuste de posição vertical e tamanho do texto
+  scale_y_continuous(labels = scales::dollar_format(scale = 1e-9, suffix = "B", prefix = "R$")) +
+  labs(title = "Top 5 UF's com maior arrecadação em 2023", x = "UF", y = "Total arrecadado (Bilhões)") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 12, face = "bold"),  # Ajusta o título do gráfico
+    axis.title.y = element_blank(),  # Remove o título do eixo Y
+    axis.text.y = element_blank(),   # Remove os rótulos do eixo Y
+    axis.ticks.y = element_blank(),  # Remove os ticks do eixo Y
+    axis.line.y = element_blank()    # Remove a linha do eixo Y
+  )
+```
+
+## Quanto foi arrecadado anualmente?
+
+```{r}
+total <- arrecadacao_estado %>%
+  reframe(arrecadacao_cols = rowSums(across(where(is.numeric))), .by=Ano) %>%
+  reframe(arrecadacao_total = sum(arrecadacao_cols), .by=Ano) %>%
+  arrange(desc(arrecadacao_total))
+
+```
+
+
+```{r}
+ggplot(total, aes(x = Ano, y = arrecadacao_total)) +
+  geom_line() +
+  geom_point() +
+  scale_y_continuous(labels = scales::dollar_format(scale = 1e-9, prefix = "R$")) +
+  labs(title = "Total arrecadado durante os anos", x = "Ano", y = "Total (bilhões)") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 12, face = "bold"))
+```
+
+## Qual o percentual de crescimento dos IPIs (Imposto sobre Produtos Industrializado) no estado que mais arrecadou em 2023?
+
+O estado que mais arrecadou foi São Paulo
+```{r}
+df_selected <- arrecadacao_estado[, c("Ano", "Mês","UF","IMPOSTO SOBRE IMPORTAÇÃO","IMPOSTO SOBRE EXPORTAÇÃO","IPI - FUMO","IPI - BEBIDAS","IPI - AUTOMÓVEIS","IPI - VINCULADO À IMPORTACAO","IPI - OUTROS" )]
+```
+```{r}
+cols_to_convert <- c("IMPOSTO SOBRE IMPORTAÇÃO", "IMPOSTO SOBRE EXPORTAÇÃO", "IPI - FUMO", "IPI - BEBIDAS", "IPI - AUTOMÓVEIS", "IPI - VINCULADO À IMPORTACAO", "IPI - OUTROS")
+
+df_selected <- df_selected %>% 
+  mutate_at(vars(cols_to_convert), ~parse_number(.x, na = c(".")))
+```
+
+
+```{r}
+df_sp_2023 <- df_selected %>%
+ filter(UF == "SP",Ano == 2023)
+
+```
+
+```{r}
+total_por_mes <- df_sp_2023 %>%
+  group_by(Mês) %>%
+  summarise(across(where(is.numeric), sum)) %>%
+  mutate(soma_total = rowSums(across(where(is.numeric))))
+
+# Ajustar a ordem dos meses
+meses_ordem <- c("Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro","Novembro", "Dezembro")
+total_por_mes <- total_por_mes %>%
+  mutate(Mês = factor(Mês, levels = meses_ordem)) %>%
+  arrange(Mês)
+
+total_por_mes <- total_por_mes %>%
+  mutate(percentual_crescimento = ifelse(is.na(lag(soma_total)), 0, (soma_total / lag(soma_total) - 1) * 100))
+
+# Substituir valores NA por 0
+total_por_mes[is.na(total_por_mes)] <- 0
+```
+
+
+```{r}
+
+# Define o tamanho global dos gráficos
+options(repr.plot.width = 25, repr.plot.height = 12)  # Ajuste os valores conforme necessário
+
+# Plotagem do gráfico
+ggplot(total_por_mes, aes(x = Mês, y = percentual_crescimento)) +
+  geom_col(fill = "skyblue", width = 0.7) +
+  geom_text(aes(label = paste0(round(percentual_crescimento, 2), "%")), vjust = -0.1, size = 3) +
+  labs(title = "Percentual de Crescimento dos IPIs em 2023 - São Paulo",
+       x = "Mês",
+       y = "Percentual de Crescimento (%)") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 12, face = "bold"),  # Ajusta o título do gráfico
+    axis.title.y = element_blank(),  # Remove o título do eixo Y
+    axis.text.y = element_blank(),   # Remove os rótulos do eixo Y
+    axis.ticks.y = element_blank(),  # Remove os ticks do eixo Y
+    axis.line.y = element_blank()    # Remove a linha do eixo Y
+  )
+```
+
+
